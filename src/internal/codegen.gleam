@@ -3,16 +3,16 @@ import gleam/list
 import gleam/string
 import internal/parse.{
   type DecodeField, type DecoderDefinition, type Parameter, type TypeName, Basic,
-  CamelCase, Constructor, DecodeField, KebabCase, Parameter, SnakeCase, TDict,
-  TList, TOption,
+  Constructor, DecodeField, Parameter, TDict, TList, TOption,
 }
 
 pub fn file_contents(
   module: String,
-  to_generate types: List(DecoderDefinition),
+  types: List(DecoderDefinition),
+  config: CaseConfig,
 ) -> String {
   let module_imports = generate_imports(module, types)
-  let decoders = generate_decoders(types)
+  let decoders = generate_decoders(types, config)
 
   module_imports <> "\n\n" <> string.join(decoders, "\n\n")
 }
@@ -40,13 +40,20 @@ fn generate_imports(
   module_imports <> "\nimport decode"
 }
 
-fn generate_decoders(defs: List(DecoderDefinition)) -> List(String) {
+fn generate_decoders(
+  defs: List(DecoderDefinition),
+  config: CaseConfig,
+) -> List(String) {
   let deps = defs |> list.flat_map(fn(d) { [d.type_name, ..d.dependencies] })
   let decs = dependencies_decoders(deps)
-  list.map(defs, generate_decoder(_, decs))
+  list.map(defs, generate_decoder(_, decs, config))
 }
 
-fn generate_decoder(def: DecoderDefinition, decs: Decoders) -> String {
+fn generate_decoder(
+  def: DecoderDefinition,
+  decs: Decoders,
+  config: CaseConfig,
+) -> String {
   let function_name = def.function_name.name
   let type_name = def.type_name.name
   let assert Constructor(Basic(name), ps) = def.constructor
@@ -63,7 +70,7 @@ fn generate_decoder(def: DecoderDefinition, decs: Decoders) -> String {
     |> string.join("\n")
 
   let df_string = fn(df: DecodeField) -> String {
-    let DecodeField(Parameter(name, type_name), config) = df
+    let DecodeField(Parameter(name, type_name)) = df
     let decode_name = case config {
       CamelCase -> camel_case(name)
       KebabCase -> kebab_case(name)
@@ -169,4 +176,10 @@ fn dict(key: Decoder, value: Decoder) -> Decoder {
 
 fn optional(dec: Decoder) -> Decoder {
   "decode.optional(" <> dec <> ")"
+}
+
+pub type CaseConfig {
+  CamelCase
+  KebabCase
+  SnakeCase
 }

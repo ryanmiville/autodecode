@@ -6,7 +6,7 @@ pub type Person {
     name: String,
     age: Int,
     pet: Option(Person),
-    gross: dict.Dict(String, List(Option(dict.Dict(Int, Bool)))),
+    gross_type: dict.Dict(String, List(Option(dict.Dict(Int, Bool)))),
   )
 }
 

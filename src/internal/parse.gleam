@@ -3,12 +3,6 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 
-pub type CaseConfig {
-  CamelCase
-  KebabCase
-  SnakeCase
-}
-
 pub type DecoderDefinition {
   DecoderDefinition(
     function_name: FunctionName,
@@ -44,16 +38,12 @@ pub type Constructor {
 }
 
 pub type DecodeField {
-  DecodeField(parameter: Parameter, config: CaseConfig)
+  DecodeField(parameter: Parameter)
 }
 
-pub fn decoder_definitions(
-  code: String,
-  types: List(String),
-  config: CaseConfig,
-) {
+pub fn decoder_definitions(code: String, types: List(String)) {
   custom_types(code, types)
-  |> list.map(decoder_definition(_, config))
+  |> list.map(decoder_definition)
 }
 
 pub fn module(filepath: String) -> String {
@@ -62,7 +52,7 @@ pub fn module(filepath: String) -> String {
   |> string.replace(".gleam", "")
 }
 
-fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
+fn decoder_definition(custom_type: CustomType) {
   let assert [variant] = custom_type.variants
   case custom_type.name == variant.name {
     False -> panic as "variant name does not match type name"
@@ -75,7 +65,7 @@ fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
   let parameters = list.map(variant.fields, to_parameter)
   let decode_parameters = parameters |> list.map(DecodeParameter)
   let constructor = Constructor(type_name, parameters)
-  let decode_fields = parameters |> list.map(DecodeField(_, config))
+  let decode_fields = parameters |> list.map(DecodeField)
   let dependencies = parameters |> list.map(fn(p) { p.type_name })
 
   DecoderDefinition(

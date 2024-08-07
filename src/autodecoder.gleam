@@ -15,9 +15,9 @@ pub fn main() -> Nil {
 fn run(filepath: String, types: List(String)) -> Nil {
   let code = fileio.read_file(filepath)
 
-  let defs = parse.decoder_definitions(code, types, parse.SnakeCase)
+  let defs = parse.decoder_definitions(code, types)
   let module = parse.module(filepath)
-  let contents = codegen.file_contents(module, defs)
+  let contents = codegen.file_contents(module, defs, codegen.SnakeCase)
   let output = fileio.output_filepath(filepath)
   fileio.write_file(output, contents)
 

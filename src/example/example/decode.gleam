@@ -14,14 +14,14 @@ pub fn person() -> decode.Decoder(Person) {
     use name <- decode.parameter
     use age <- decode.parameter
     use pet <- decode.parameter
-    use gross <- decode.parameter
-    Person(name, age, pet, gross)
+    use gross_type <- decode.parameter
+    Person(name, age, pet, gross_type)
   })
   |> decode.field("name", decode.string)
   |> decode.field("age", decode.int)
   |> decode.field("pet", decode.optional(person()))
   |> decode.field(
-    "gross",
+    "gross_type",
     decode.dict(
       decode.string,
       decode.list(decode.optional(decode.dict(decode.int, decode.bool))),
