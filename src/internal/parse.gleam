@@ -25,7 +25,10 @@ pub type FunctionName {
 }
 
 pub type TypeName {
-  TypeName(name: String, type_parameters: List(TypeName))
+  Basic(name: String)
+  TList(name: String, type_parameter: TypeName)
+  TOption(name: String, type_parameter: TypeName)
+  TDict(name: String, key: TypeName, value: TypeName)
 }
 
 pub type Parameter {
@@ -68,7 +71,7 @@ fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
 
   // TODO convert from camel to snake
   let function_name = FunctionName(string.lowercase(variant.name))
-  let type_name = TypeName(variant.name, [])
+  let type_name = Basic(variant.name)
   let parameters = list.map(variant.fields, to_parameter)
   let decode_parameters = parameters |> list.map(DecodeParameter)
   let constructor = Constructor(type_name, parameters)
@@ -102,12 +105,22 @@ fn to_parameter(field: Field(Type)) -> Parameter {
 
 fn to_type_name(nt: Type) -> TypeName {
   case nt {
-    NamedType(name, None, []) -> TypeName(name, [])
-    NamedType(name, None, types) -> {
-      let params = to_type_names(types)
-      let names = params |> list.map(fn(tn) { tn.name }) |> string.join(", ")
-      let name = name <> "(" <> names <> ")"
-      TypeName(name, params)
+    NamedType(name, None, []) -> Basic(name)
+    NamedType("List", None, [p]) -> {
+      let param = to_type_name(p)
+      let name = "List(" <> param.name <> ")"
+      TList(name, param)
+    }
+    NamedType("Option", None, [p]) -> {
+      let param = to_type_name(p)
+      let name = "Option(" <> param.name <> ")"
+      TOption(name, param)
+    }
+    NamedType("Dict", None, [k, v]) -> {
+      let key = to_type_name(k)
+      let value = to_type_name(v)
+      let name = "Option(" <> key.name <> ", " <> value.name <> ")"
+      TDict(name, key, value)
     }
     _ -> panic as { "unsupported type" <> string.inspect(nt) }
   }

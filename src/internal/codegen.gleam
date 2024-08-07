@@ -45,7 +45,7 @@ fn generate_decoders(defs: List(parse.DecoderDefinition)) -> List(String) {
 fn generate_decoder(def: parse.DecoderDefinition, decs: Decoders) -> String {
   let function_name = def.function_name.name
   let type_name = def.type_name.name
-  let parse.Constructor(parse.TypeName(name, _), ps) = def.constructor
+  let assert parse.Constructor(parse.Basic(name), ps) = def.constructor
   let ps =
     ps
     |> list.map(fn(p) { p.name })
@@ -66,7 +66,7 @@ fn generate_decoder(def: parse.DecoderDefinition, decs: Decoders) -> String {
       parse.SnakeCase -> name
     }
 
-    let assert Ok(dec) = dict.get(decs, type_name.name)
+    let assert Ok(dec) = dict.get(decs, type_name)
 
     "|> decode.field(\"" <> decode_name <> "\", " <> dec <> ")"
   }
@@ -102,24 +102,21 @@ fn imports(types: List(String)) -> String {
   with_type <> ", " <> cons
 }
 
-type Type =
-  String
-
 type Decoder =
   String
 
 type Decoders =
-  Dict(Type, Decoder)
+  Dict(parse.TypeName, Decoder)
 
 fn built_ins() -> Decoders {
   dict.from_list([
-    #("Int", "decode.int"),
-    #("Float", "decode.float"),
-    #("String", "decode.string"),
-    #("BitArray", "decode.bit_array"),
-    #("Dynamic", "decode.dynamic"),
-    #("Bool", "decode.bool"),
-    #("Int", "decode.int"),
+    #(parse.Basic("Int"), "decode.int"),
+    #(parse.Basic("Float"), "decode.float"),
+    #(parse.Basic("String"), "decode.string"),
+    #(parse.Basic("BitArray"), "decode.bit_array"),
+    #(parse.Basic("Dynamic"), "decode.dynamic"),
+    #(parse.Basic("Bool"), "decode.bool"),
+    #(parse.Basic("Int"), "decode.int"),
   ])
 }
 
@@ -139,38 +136,25 @@ fn do_dependencies_decoders(
 }
 
 fn add_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoders {
-  case dict.get(decs, tpe.name) {
+  case dict.get(decs, tpe) {
     Ok(_) -> decs
-    _ -> {
-      let #(key, value) = get_decoder(tpe, decs)
-      dict.insert(decs, key, value)
-    }
+    _ -> dict.insert(decs, tpe, get_decoder(tpe, decs))
   }
 }
 
-fn get_decoder(tpe: parse.TypeName, decs: Decoders) -> #(Type, Decoder) {
-  case dict.get(decs, tpe.name) {
-    Ok(d) -> #(tpe.name, d)
+fn get_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoder {
+  case dict.get(decs, tpe) {
+    Ok(d) -> d
     _ -> do_get_decoder(tpe, decs)
   }
 }
 
-fn do_get_decoder(tpe: parse.TypeName, decs: Decoders) -> #(Type, Decoder) {
+fn do_get_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoder {
   case tpe {
-    parse.TypeName("List(" <> _, [p]) -> #(
-      tpe.name,
-      list(get_decoder(p, decs).1),
-    )
-    parse.TypeName("Option(" <> _, [p]) -> #(
-      tpe.name,
-      optional(get_decoder(p, decs).1),
-    )
-    parse.TypeName("Dict(" <> _, [a, b]) -> #(
-      tpe.name,
-      dict(get_decoder(a, decs).1, get_decoder(b, decs).1),
-    )
-    parse.TypeName(name, []) -> #(name, string.lowercase(name) <> "()")
-    _ -> panic as "unsupported type"
+    parse.TList(_, p) -> list(get_decoder(p, decs))
+    parse.TOption(_, p) -> optional(get_decoder(p, decs))
+    parse.TDict(_, k, v) -> dict(get_decoder(k, decs), get_decoder(v, decs))
+    parse.Basic(name) -> string.lowercase(name) <> "()"
   }
 }
 
