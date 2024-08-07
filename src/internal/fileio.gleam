@@ -9,6 +9,17 @@ pub fn read_file(filepath) {
   }
 }
 
+pub fn write_file(filepath: String, contents: String) {
+  delete(filepath)
+  create_directory(path(filepath))
+  write(filepath, contents)
+  fmt(filepath)
+}
+
+pub fn output_filepath(in filepath: String) -> String {
+  string.replace(filepath, ".gleam", "/decode.gleam")
+}
+
 fn delete(filepath: String) {
   case simplifile.delete(filepath) {
     Ok(_) | Error(simplifile.Enoent) -> Nil
@@ -46,13 +57,6 @@ fn write(filepath: String, contents: String) {
         <> simplifile.describe_error(e)
       }
   }
-}
-
-pub fn write_file(filepath: String, contents: String) {
-  delete(filepath)
-  create_directory(path(filepath))
-  write(filepath, contents)
-  fmt(filepath)
 }
 
 fn drop_last(l: List(a)) -> List(a) {

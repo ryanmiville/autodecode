@@ -2,6 +2,24 @@ import gleam/list
 import gleam/string
 import internal/parse
 
+pub fn file_contents(
+  module: String,
+  to_generate types: List(parse.DecoderDefinition),
+) -> String {
+  let module_imports =
+    types
+    |> list.map(fn(t) { t.type_name.name })
+    |> imports
+
+  let module_imports = "import " <> module <> ".{" <> module_imports <> "}"
+  let decoders =
+    types
+    |> list.map(generate_decoder)
+    |> string.join("\n\n")
+
+  module_imports <> "\nimport decode\n\n" <> decoders
+}
+
 const template = "
 pub fn FUNCTION_NAME() -> decode.Decoder(TYPE) {
   decode.into({
@@ -72,22 +90,4 @@ fn imports(types: List(String)) -> String {
   let cons = types |> string.join(", ")
 
   with_type <> ", " <> cons
-}
-
-pub fn file_contents(
-  module: String,
-  to_generate types: List(parse.DecoderDefinition),
-) -> String {
-  let module_imports =
-    types
-    |> list.map(fn(t) { t.type_name.name })
-    |> imports
-
-  let module_imports = "import " <> module <> ".{" <> module_imports <> "}"
-  let decoders =
-    types
-    |> list.map(generate_decoder)
-    |> string.join("\n\n")
-
-  module_imports <> "\nimport decode\n\n" <> decoders
 }

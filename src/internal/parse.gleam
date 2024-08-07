@@ -52,6 +52,12 @@ pub fn decoder_definitions(
   |> list.map(decoder_definition(_, config))
 }
 
+pub fn module(filepath: String) -> String {
+  filepath
+  |> string.replace("./src/", "")
+  |> string.replace(".gleam", "")
+}
+
 fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
   let assert [variant] = custom_type.variants
   case custom_type.name == variant.name {
@@ -88,8 +94,4 @@ fn to_parameter(field: Field(Type)) -> Parameter {
   let assert NamedType(type_name, None, []) = field.item
 
   Parameter(name, TypeName(type_name))
-}
-
-pub fn module(_filepath: String) -> String {
-  todo
 }
