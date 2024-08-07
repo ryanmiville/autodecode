@@ -1,20 +1,20 @@
-# autodecode
+# autodecoder
 
-[![Package Version](https://img.shields.io/hexpm/v/autodecode)](https://hex.pm/packages/autodecode)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/autodecode/)
+[![Package Version](https://img.shields.io/hexpm/v/autodecoder)](https://hex.pm/packages/autodecoder)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/autodecoder/)
 
 ```sh
-gleam add autodecode@1
+gleam add autodecoder@1
 ```
 ```gleam
-import autodecode
+import autodecoder
 
 pub fn main() {
   // TODO: An example of the project in use
 }
 ```
 
-Further documentation can be found at <https://hexdocs.pm/autodecode>.
+Further documentation can be found at <https://hexdocs.pm/autodecoder>.
 
 ## Development
 
