@@ -111,12 +111,12 @@ fn to_type_name(nt: Type) -> TypeName {
       let name = "List(" <> param.name <> ")"
       TList(name, param)
     }
-    NamedType("Option", None, [p]) -> {
+    NamedType("Option", _, [p]) -> {
       let param = to_type_name(p)
       let name = "Option(" <> param.name <> ")"
       TOption(name, param)
     }
-    NamedType("Dict", None, [k, v]) -> {
+    NamedType("Dict", _, [k, v]) -> {
       let key = to_type_name(k)
       let value = to_type_name(v)
       let name = "Option(" <> key.name <> ", " <> value.name <> ")"

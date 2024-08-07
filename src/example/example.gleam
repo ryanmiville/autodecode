@@ -1,4 +1,4 @@
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/option.{type Option}
 
 pub type Person {
@@ -6,7 +6,7 @@ pub type Person {
     name: String,
     age: Int,
     pet: Option(Person),
-    gross: Dict(String, List(Option(Dict(Int, Bool)))),
+    gross: dict.Dict(String, List(Option(dict.Dict(Int, Bool)))),
   )
 }
 
