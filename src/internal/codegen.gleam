@@ -1,7 +1,6 @@
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/list
 import gleam/string
-import internal/dep
 import internal/parse
 
 pub fn file_contents(
@@ -38,12 +37,12 @@ fn generate_imports(
 }
 
 fn generate_decoders(defs: List(parse.DecoderDefinition)) -> List(String) {
-  let deps = dep.dependencies(defs)
-  let decs = dep.find_decoders(deps)
+  let deps = defs |> list.flat_map(fn(d) { [d.type_name, ..d.dependencies] })
+  let decs = dependencies_decoders(deps)
   list.map(defs, generate_decoder(_, decs))
 }
 
-fn generate_decoder(def: parse.DecoderDefinition, decs: dep.Decoders) -> String {
+fn generate_decoder(def: parse.DecoderDefinition, decs: Decoders) -> String {
   let function_name = def.function_name.name
   let type_name = def.type_name.name
   let parse.Constructor(parse.TypeName(name, _), ps) = def.constructor
@@ -101,4 +100,88 @@ fn imports(types: List(String)) -> String {
   let cons = types |> string.join(", ")
 
   with_type <> ", " <> cons
+}
+
+type Type =
+  String
+
+type Decoder =
+  String
+
+type Decoders =
+  Dict(Type, Decoder)
+
+fn built_ins() -> Decoders {
+  dict.from_list([
+    #("Int", "decode.int"),
+    #("Float", "decode.float"),
+    #("String", "decode.string"),
+    #("BitArray", "decode.bit_array"),
+    #("Dynamic", "decode.dynamic"),
+    #("Bool", "decode.bool"),
+    #("Int", "decode.int"),
+  ])
+}
+
+pub fn dependencies_decoders(types: List(parse.TypeName)) -> Decoders {
+  do_dependencies_decoders(built_ins(), types)
+}
+
+fn do_dependencies_decoders(
+  decs: Decoders,
+  types: List(parse.TypeName),
+) -> Decoders {
+  case types {
+    [] -> decs
+    [h] -> add_decoder(h, decs)
+    [h, ..rest] -> do_dependencies_decoders(add_decoder(h, decs), rest)
+  }
+}
+
+fn add_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoders {
+  case dict.get(decs, tpe.name) {
+    Ok(_) -> decs
+    _ -> {
+      let #(key, value) = get_decoder(tpe, decs)
+      dict.insert(decs, key, value)
+    }
+  }
+}
+
+fn get_decoder(tpe: parse.TypeName, decs: Decoders) -> #(Type, Decoder) {
+  case dict.get(decs, tpe.name) {
+    Ok(d) -> #(tpe.name, d)
+    _ -> do_get_decoder(tpe, decs)
+  }
+}
+
+fn do_get_decoder(tpe: parse.TypeName, decs: Decoders) -> #(Type, Decoder) {
+  case tpe {
+    parse.TypeName("List(" <> _, [p]) -> #(
+      tpe.name,
+      list(get_decoder(p, decs).1),
+    )
+    parse.TypeName("Option(" <> _, [p]) -> #(
+      tpe.name,
+      optional(get_decoder(p, decs).1),
+    )
+    parse.TypeName("Dict(" <> _, [a, b]) -> #(
+      tpe.name,
+      dict(get_decoder(a, decs).1, get_decoder(b, decs).1),
+    )
+    parse.TypeName(name, []) -> #(name, string.lowercase(name) <> "()")
+    _ -> panic as "unsupported type"
+  }
+}
+
+fn list(dec: Decoder) -> Decoder {
+  "decode.list(" <> dec <> ")"
+}
+
+fn dict(key: Decoder, value: Decoder) -> Decoder {
+  "decode.dict(" <> key <> ", " <> value <> ")"
+}
+
+fn optional(dec: Decoder) -> Decoder {
+  "decode.optional(" <> dec <> ")"
 }

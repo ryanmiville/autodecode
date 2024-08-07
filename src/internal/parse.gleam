@@ -16,6 +16,7 @@ pub type DecoderDefinition {
     decode_parameters: List(DecodeParameter),
     constructor: Constructor,
     decode_fields: List(DecodeField),
+    dependencies: List(TypeName),
   )
 }
 
@@ -72,6 +73,7 @@ fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
   let decode_parameters = parameters |> list.map(DecodeParameter)
   let constructor = Constructor(type_name, parameters)
   let decode_fields = parameters |> list.map(DecodeField(_, config))
+  let dependencies = parameters |> list.map(fn(p) { p.type_name })
 
   DecoderDefinition(
     function_name: function_name,
@@ -79,6 +81,7 @@ fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
     decode_parameters: decode_parameters,
     constructor: constructor,
     decode_fields: decode_fields,
+    dependencies: dependencies,
   )
 }
 
