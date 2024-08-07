@@ -9,26 +9,62 @@ pub fn read_file(filepath) {
   }
 }
 
-pub fn write_file(filepath: String, contents: String) {
-  let path = path(filepath)
-  let assert Ok(_) = simplifile.create_directory(path)
+fn delete(filepath: String) {
+  case simplifile.delete(filepath) {
+    Ok(_) | Error(simplifile.Enoent) -> Nil
+    Error(e) ->
+      panic as {
+        "failed to delete file: "
+        <> filepath
+        <> "\nreason: "
+        <> simplifile.describe_error(e)
+      }
+  }
+}
+
+fn create_directory(path: String) {
+  case simplifile.create_directory(path) {
+    Ok(_) | Error(simplifile.Eexist) -> Nil
+    Error(e) ->
+      panic as {
+        "failed to create directory: "
+        <> path
+        <> "\nreason: "
+        <> simplifile.describe_error(e)
+      }
+  }
+}
+
+fn write(filepath: String, contents: String) {
   case simplifile.write(filepath, contents) {
     Ok(_) -> Nil
-    _ -> panic as { "Failed to write file " <> filepath }
+    Error(e) ->
+      panic as {
+        "Failed to write file: "
+        <> filepath
+        <> "\nreason: "
+        <> simplifile.describe_error(e)
+      }
   }
+}
+
+pub fn write_file(filepath: String, contents: String) {
+  delete(filepath)
+  create_directory(path(filepath))
+  write(filepath, contents)
   fmt(filepath)
 }
 
-fn all_but_last(l: List(a)) -> List(a) {
+fn drop_last(l: List(a)) -> List(a) {
   case l {
     [] | [_] -> []
-    [x, ..xs] -> [x, ..all_but_last(xs)]
+    [x, ..xs] -> [x, ..drop_last(xs)]
   }
 }
 
 fn path(filepath: String) -> String {
   string.split(filepath, "/")
-  |> all_but_last
+  |> drop_last
   |> string.join("/")
 }
 
@@ -38,6 +74,7 @@ fn fmt(filepath: String) {
 
   case format {
     Ok(_) -> Nil
-    _ -> panic as { "Failed to format file" <> filepath }
+    Error(#(_, msg)) ->
+      panic as { "Failed to format file: " <> filepath <> "\nreason: " <> msg }
   }
 }
