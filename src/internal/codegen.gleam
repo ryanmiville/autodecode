@@ -1,11 +1,15 @@
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/string
-import internal/parse
+import internal/parse.{
+  type DecodeField, type DecoderDefinition, type Parameter, type TypeName, Basic,
+  CamelCase, Constructor, DecodeField, KebabCase, Parameter, SnakeCase, TDict,
+  TList, TOption,
+}
 
 pub fn file_contents(
   module: String,
-  to_generate types: List(parse.DecoderDefinition),
+  to_generate types: List(DecoderDefinition),
 ) -> String {
   let module_imports = generate_imports(module, types)
   let decoders = generate_decoders(types)
@@ -25,7 +29,7 @@ pub fn FUNCTION_NAME() -> decode.Decoder(TYPE) {
 
 fn generate_imports(
   module: String,
-  to_generate types: List(parse.DecoderDefinition),
+  to_generate types: List(DecoderDefinition),
 ) -> String {
   let module_imports =
     types
@@ -36,16 +40,16 @@ fn generate_imports(
   module_imports <> "\nimport decode"
 }
 
-fn generate_decoders(defs: List(parse.DecoderDefinition)) -> List(String) {
+fn generate_decoders(defs: List(DecoderDefinition)) -> List(String) {
   let deps = defs |> list.flat_map(fn(d) { [d.type_name, ..d.dependencies] })
   let decs = dependencies_decoders(deps)
   list.map(defs, generate_decoder(_, decs))
 }
 
-fn generate_decoder(def: parse.DecoderDefinition, decs: Decoders) -> String {
+fn generate_decoder(def: DecoderDefinition, decs: Decoders) -> String {
   let function_name = def.function_name.name
   let type_name = def.type_name.name
-  let assert parse.Constructor(parse.Basic(name), ps) = def.constructor
+  let assert Constructor(Basic(name), ps) = def.constructor
   let ps =
     ps
     |> list.map(fn(p) { p.name })
@@ -58,12 +62,12 @@ fn generate_decoder(def: parse.DecoderDefinition, decs: Decoders) -> String {
     |> list.map(fn(dp) { "use " <> dp.parameter.name <> " <- decode.parameter" })
     |> string.join("\n")
 
-  let df_string = fn(df: parse.DecodeField) -> String {
-    let parse.DecodeField(parse.Parameter(name, type_name), config) = df
+  let df_string = fn(df: DecodeField) -> String {
+    let DecodeField(Parameter(name, type_name), config) = df
     let decode_name = case config {
-      parse.CamelCase -> camel_case(name)
-      parse.KebabCase -> kebab_case(name)
-      parse.SnakeCase -> name
+      CamelCase -> camel_case(name)
+      KebabCase -> kebab_case(name)
+      SnakeCase -> name
     }
 
     let assert Ok(dec) = dict.get(decs, type_name)
@@ -106,28 +110,25 @@ type Decoder =
   String
 
 type Decoders =
-  Dict(parse.TypeName, Decoder)
+  Dict(TypeName, Decoder)
 
 fn built_ins() -> Decoders {
   dict.from_list([
-    #(parse.Basic("Int"), "decode.int"),
-    #(parse.Basic("Float"), "decode.float"),
-    #(parse.Basic("String"), "decode.string"),
-    #(parse.Basic("BitArray"), "decode.bit_array"),
-    #(parse.Basic("Dynamic"), "decode.dynamic"),
-    #(parse.Basic("Bool"), "decode.bool"),
-    #(parse.Basic("Int"), "decode.int"),
+    #(Basic("Int"), "decode.int"),
+    #(Basic("Float"), "decode.float"),
+    #(Basic("String"), "decode.string"),
+    #(Basic("BitArray"), "decode.bit_array"),
+    #(Basic("Dynamic"), "decode.dynamic"),
+    #(Basic("Bool"), "decode.bool"),
+    #(Basic("Int"), "decode.int"),
   ])
 }
 
-pub fn dependencies_decoders(types: List(parse.TypeName)) -> Decoders {
+pub fn dependencies_decoders(types: List(TypeName)) -> Decoders {
   do_dependencies_decoders(built_ins(), types)
 }
 
-fn do_dependencies_decoders(
-  decs: Decoders,
-  types: List(parse.TypeName),
-) -> Decoders {
+fn do_dependencies_decoders(decs: Decoders, types: List(TypeName)) -> Decoders {
   case types {
     [] -> decs
     [h] -> add_decoder(h, decs)
@@ -135,26 +136,26 @@ fn do_dependencies_decoders(
   }
 }
 
-fn add_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoders {
+fn add_decoder(tpe: TypeName, decs: Decoders) -> Decoders {
   case dict.get(decs, tpe) {
     Ok(_) -> decs
     _ -> dict.insert(decs, tpe, get_decoder(tpe, decs))
   }
 }
 
-fn get_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoder {
+fn get_decoder(tpe: TypeName, decs: Decoders) -> Decoder {
   case dict.get(decs, tpe) {
     Ok(d) -> d
     _ -> do_get_decoder(tpe, decs)
   }
 }
 
-fn do_get_decoder(tpe: parse.TypeName, decs: Decoders) -> Decoder {
+fn do_get_decoder(tpe: TypeName, decs: Decoders) -> Decoder {
   case tpe {
-    parse.TList(_, p) -> list(get_decoder(p, decs))
-    parse.TOption(_, p) -> optional(get_decoder(p, decs))
-    parse.TDict(_, k, v) -> dict(get_decoder(k, decs), get_decoder(v, decs))
-    parse.Basic(name) -> string.lowercase(name) <> "()"
+    TList(_, p) -> list(get_decoder(p, decs))
+    TOption(_, p) -> optional(get_decoder(p, decs))
+    TDict(_, k, v) -> dict(get_decoder(k, decs), get_decoder(v, decs))
+    Basic(name) -> string.lowercase(name) <> "()"
   }
 }
 
