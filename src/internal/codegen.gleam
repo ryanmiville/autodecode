@@ -1,23 +1,17 @@
+import gleam/dict
 import gleam/list
 import gleam/string
+import internal/dep
 import internal/parse
 
 pub fn file_contents(
   module: String,
   to_generate types: List(parse.DecoderDefinition),
 ) -> String {
-  let module_imports =
-    types
-    |> list.map(fn(t) { t.type_name.name })
-    |> imports
+  let module_imports = generate_imports(module, types)
+  let decoders = generate_decoders(types)
 
-  let module_imports = "import " <> module <> ".{" <> module_imports <> "}"
-  let decoders =
-    types
-    |> list.map(generate_decoder)
-    |> string.join("\n\n")
-
-  module_imports <> "\nimport decode\n\n" <> decoders
+  module_imports <> "\n\n" <> string.join(decoders, "\n\n")
 }
 
 const template = "
@@ -30,10 +24,29 @@ pub fn FUNCTION_NAME() -> decode.Decoder(TYPE) {
 }
 "
 
-fn generate_decoder(def: parse.DecoderDefinition) -> String {
+fn generate_imports(
+  module: String,
+  to_generate types: List(parse.DecoderDefinition),
+) -> String {
+  let module_imports =
+    types
+    |> list.map(fn(t) { t.type_name.name })
+    |> imports
+
+  let module_imports = "import " <> module <> ".{" <> module_imports <> "}"
+  module_imports <> "\nimport decode"
+}
+
+fn generate_decoders(defs: List(parse.DecoderDefinition)) -> List(String) {
+  let deps = dep.dependencies(defs)
+  let decs = dep.find_decoders(deps)
+  list.map(defs, generate_decoder(_, decs))
+}
+
+fn generate_decoder(def: parse.DecoderDefinition, decs: dep.Decoders) -> String {
   let function_name = def.function_name.name
   let type_name = def.type_name.name
-  let parse.Constructor(parse.TypeName(name), ps) = def.constructor
+  let parse.Constructor(parse.TypeName(name, _), ps) = def.constructor
   let ps =
     ps
     |> list.map(fn(p) { p.name })
@@ -54,11 +67,9 @@ fn generate_decoder(def: parse.DecoderDefinition) -> String {
       parse.SnakeCase -> name
     }
 
-    "|> decode.field(\""
-    <> decode_name
-    <> "\", decode."
-    <> string.lowercase(type_name.name)
-    <> ")"
+    let assert Ok(dec) = dict.get(decs, type_name.name)
+
+    "|> decode.field(\"" <> decode_name <> "\", " <> dec <> ")"
   }
 
   let decode_fields =

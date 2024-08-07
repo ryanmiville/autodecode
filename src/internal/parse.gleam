@@ -24,7 +24,7 @@ pub type FunctionName {
 }
 
 pub type TypeName {
-  TypeName(name: String)
+  TypeName(name: String, type_parameters: List(TypeName))
 }
 
 pub type Parameter {
@@ -65,8 +65,9 @@ fn decoder_definition(custom_type: CustomType, config: CaseConfig) {
     True -> Nil
   }
 
+  // TODO convert from camel to snake
   let function_name = FunctionName(string.lowercase(variant.name))
-  let type_name = TypeName(variant.name)
+  let type_name = TypeName(variant.name, [])
   let parameters = list.map(variant.fields, to_parameter)
   let decode_parameters = parameters |> list.map(DecodeParameter)
   let constructor = Constructor(type_name, parameters)
@@ -91,7 +92,28 @@ fn custom_types(code: String, types: List(String)) -> List(CustomType) {
 
 fn to_parameter(field: Field(Type)) -> Parameter {
   let assert Some(name) = field.label
-  let assert NamedType(type_name, None, []) = field.item
+  let type_name = to_type_name(field.item)
 
-  Parameter(name, TypeName(type_name))
+  Parameter(name, type_name)
+}
+
+fn to_type_name(nt: Type) -> TypeName {
+  case nt {
+    NamedType(name, None, []) -> TypeName(name, [])
+    NamedType(name, None, types) -> {
+      let params = to_type_names(types)
+      let names = params |> list.map(fn(tn) { tn.name }) |> string.join(", ")
+      let name = name <> "(" <> names <> ")"
+      TypeName(name, params)
+    }
+    _ -> panic as { "unsupported type" <> string.inspect(nt) }
+  }
+}
+
+fn to_type_names(types: List(Type)) -> List(TypeName) {
+  case types {
+    [h] -> [to_type_name(h)]
+    [h, ..rest] -> [to_type_name(h), ..to_type_names(rest)]
+    _ -> panic as { "unsupported type" <> string.inspect(types) }
+  }
 }
