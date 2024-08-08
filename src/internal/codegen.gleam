@@ -5,6 +5,7 @@ import internal/parse.{
   type DecodeField, type DecoderDefinition, type Parameter, type TypeName, Basic,
   Constructor, DecodeField, Parameter, TDict, TList, TOption,
 }
+import internal/stringutils
 
 pub fn file_contents(
   module: String,
@@ -72,8 +73,8 @@ fn generate_decoder(
   let df_string = fn(df: DecodeField) -> String {
     let DecodeField(Parameter(name, type_name)) = df
     let decode_name = case config {
-      CamelCase -> camel_case(name)
-      KebabCase -> kebab_case(name)
+      CamelCase -> stringutils.snake_to_camel(name)
+      KebabCase -> stringutils.snake_to_kebab(name)
       SnakeCase -> name
     }
 
@@ -90,17 +91,6 @@ fn generate_decoder(
   |> string.replace("PARAMETERS", decode_parameters)
   |> string.replace("CONSTRUCTOR", constructor)
   |> string.replace("DECODE_FIELDS", decode_fields)
-}
-
-fn camel_case(s: String) -> String {
-  case string.split(s, "_") {
-    [h, ..rest] -> h <> rest |> list.map(string.capitalise) |> string.concat
-    _ -> s
-  }
-}
-
-fn kebab_case(s: String) -> String {
-  string.replace(s, each: "_", with: "-")
 }
 
 fn imports(types: List(String)) -> String {
@@ -162,7 +152,7 @@ fn do_get_decoder(tpe: TypeName, decs: Decoders) -> Decoder {
     TList(_, p) -> list(get_decoder(p, decs))
     TOption(_, p) -> optional(get_decoder(p, decs))
     TDict(_, k, v) -> dict(get_decoder(k, decs), get_decoder(v, decs))
-    Basic(name) -> string.lowercase(name) <> "()"
+    Basic(name) -> stringutils.pascal_to_snake(name) <> "()"
   }
 }
 

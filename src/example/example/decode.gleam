@@ -1,10 +1,10 @@
 import decode
-import example/example.{type Person, type Pet, Person, Pet}
+import example/example.{type Person, type PetName, Person, PetName}
 
-pub fn pet() -> decode.Decoder(Pet) {
+pub fn pet_name() -> decode.Decoder(PetName) {
   decode.into({
     use name <- decode.parameter
-    Pet(name)
+    PetName(name)
   })
   |> decode.field("name", decode.string)
 }
@@ -19,7 +19,7 @@ pub fn person() -> decode.Decoder(Person) {
   })
   |> decode.field("name", decode.string)
   |> decode.field("age", decode.int)
-  |> decode.field("pet", decode.optional(person()))
+  |> decode.field("pet", decode.optional(pet_name()))
   |> decode.field(
     "gross_type",
     decode.dict(

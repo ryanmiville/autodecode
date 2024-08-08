@@ -2,6 +2,7 @@ import glance.{type CustomType, type Field, type Type, CustomType, NamedType}
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import internal/stringutils
 
 pub type DecoderDefinition {
   DecoderDefinition(
@@ -59,8 +60,7 @@ fn decoder_definition(custom_type: CustomType) {
     True -> Nil
   }
 
-  // TODO convert from camel to snake
-  let function_name = FunctionName(string.lowercase(variant.name))
+  let function_name = FunctionName(stringutils.pascal_to_snake(variant.name))
   let type_name = Basic(variant.name)
   let parameters = list.map(variant.fields, to_parameter)
   let decode_parameters = parameters |> list.map(DecodeParameter)
